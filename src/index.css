@@ -1,0 +1,39 @@
+/* Reinicio de márgenes y paddings */
+body,
+h1,
+h2,
+h3,
+p,
+ul,
+li {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Estilo general del body */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f2f5;
+  /* Fondo claro */
+  color: #333;
+  /* Color de texto oscuro */
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Estilo general para enlaces */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Contenedor principal */
+#root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
