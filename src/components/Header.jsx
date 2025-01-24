@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Menu } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { HomeOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { HomeOutlined, UserOutlined, LogoutOutlined, FileTextOutlined } from '@ant-design/icons';
 
 const { Header } = Layout;
 
@@ -25,6 +25,12 @@ const AppHeader = () => {
             icon: <UserOutlined />,
             label: 'Usuarios',
             onClick: () => navigate('/usuarios')
+        },
+        {
+            key: 'solicitudes',
+            icon: <FileTextOutlined />,
+            label: 'Solicitudes',
+            onClick: () => navigate('/solicitudes')
         },
         {
             key: 'logout',

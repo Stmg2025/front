@@ -1,4 +1,3 @@
-// Login.jsx
 import React, { useState } from 'react';
 import { Button, Form, Input, message } from 'antd';
 import axios from 'axios';
@@ -10,22 +9,18 @@ const Login = () => {
 
     const handleLogin = async (values) => {
         setLoading(true);
-        const apiUrl = window.location.hostname === 'localhost'
-            ? 'http://localhost:3001'
-            : 'https://back-mu-ochre.vercel.app';
-
         try {
-            const response = await axios.post(`${apiUrl}/usuarios/login`, {
+            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/usuarios/login`, {
                 correo_electronico: values.email,
                 contrasena: values.password,
             });
 
-            localStorage.setItem('token', response.data.token);
             message.success('Inicio de sesión exitoso');
+            localStorage.setItem('token', response.data.token);
             navigate('/');
         } catch (error) {
-            console.error('Error:', error);
-            message.error('Credenciales incorrectas');
+            message.error('Credenciales incorrectas o error de red');
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -34,10 +29,7 @@ const Login = () => {
     return (
         <div style={{ maxWidth: '400px', margin: '50px auto' }}>
             <h1>Inicio de Sesión</h1>
-            <Form
-                layout="vertical"
-                onFinish={handleLogin}
-            >
+            <Form layout="vertical" onFinish={handleLogin}>
                 <Form.Item
                     label="Correo Electrónico"
                     name="email"
