@@ -3,7 +3,7 @@ import React from 'react';
 const Home = () => {
     return (
         <div>
-            <h1>Bienvenido a la aplicación React con Vite y Ant Design</h1>
+            <h1>Bienvenido a Servicio Tecnco Maigas</h1>
         </div>
     );
 };

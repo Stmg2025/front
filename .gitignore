@@ -27,3 +27,5 @@ dist/
 
 # Thumbnails
 Thumbs.db
+
+.vercel
