@@ -12,10 +12,10 @@ import Solicitudes from './modulos/Solicitudes';
 const App = () => (
   <Router>
     <Routes>
-      {/* Ruta para iniciar sesión */}
+      {/* Ruta pública para login */}
       <Route path="/login" element={<Login />} />
 
-      {/* Rutas protegidas */}
+      {/* Ruta principal protegida */}
       <Route
         path="/"
         element={
@@ -25,10 +25,12 @@ const App = () => (
           </PrivateRoute>
         }
       />
+
+      {/* Rutas protegidas para administración de usuarios */}
       <Route
         path="/usuarios"
         element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole="Administrador">
             <Header />
             <Usuarios />
           </PrivateRoute>
@@ -37,7 +39,7 @@ const App = () => (
       <Route
         path="/usuarios/crear"
         element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole="Administrador">
             <Header />
             <CrearUsuario />
           </PrivateRoute>
@@ -46,12 +48,14 @@ const App = () => (
       <Route
         path="/usuarios/editar/:id"
         element={
-          <PrivateRoute>
+          <PrivateRoute requiredRole="Administrador">
             <Header />
             <EditarUsuario />
           </PrivateRoute>
         }
       />
+
+      {/* Ruta protegida para solicitudes - accesible para todos los usuarios autenticados */}
       <Route
         path="/solicitudes"
         element={

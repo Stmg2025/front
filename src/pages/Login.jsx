@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Button, Form, Input, message, Card } from 'antd';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import background from '../assets/Flota-camiones-Maigas-1.jpg'; // Importa la imagen de fondo
-import logo from '../assets/logo.png'; // Importa el logo
+import background from '../assets/Flota-camiones-Maigas-1.jpg';
+import logo from '../assets/logo.png';
 
 const Login = () => {
     const [loading, setLoading] = useState(false);
@@ -17,12 +17,24 @@ const Login = () => {
                 contrasena: values.password,
             });
 
-            message.success('Inicio de sesión exitoso');
+            // Debug: Ver la respuesta completa
+            console.log('Respuesta del servidor:', response.data);
+
+            // Guardar el token
             localStorage.setItem('token', response.data.token);
+
+            // Guardar la información del usuario
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+
+            // Debug: Verificar lo que se guardó
+            console.log('Token guardado:', localStorage.getItem('token'));
+            console.log('Usuario guardado:', localStorage.getItem('user'));
+
+            message.success('Inicio de sesión exitoso');
             navigate('/');
         } catch (error) {
             message.error('Credenciales incorrectas o error de red');
-            console.error(error);
+            console.error('Error completo:', error);
         } finally {
             setLoading(false);
         }
@@ -35,7 +47,7 @@ const Login = () => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: '100vh',
-                backgroundImage: `url(${background})`, // Imagen de fondo importada
+                backgroundImage: `url(${background})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
             }}
@@ -46,12 +58,12 @@ const Login = () => {
                     textAlign: 'center',
                     padding: '30px',
                     borderRadius: '12px',
-                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)', // Más sombra
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Fondo semitransparente
+                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
                 }}
             >
                 <img
-                    src={logo} // Logo importado
+                    src={logo}
                     alt="Logo"
                     style={{ width: '100px', marginBottom: '20px' }}
                 />
@@ -68,7 +80,7 @@ const Login = () => {
                     style={{
                         marginBottom: '20px',
                         fontSize: '1.5rem',
-                        color: 'red', // Color rojo
+                        color: 'red',
                         fontWeight: 'bold',
                     }}
                 >
@@ -96,7 +108,7 @@ const Login = () => {
                             loading={loading}
                             block
                             style={{
-                                backgroundColor: 'red', // Botón rojo
+                                backgroundColor: 'red',
                                 borderColor: 'red',
                             }}
                         >
