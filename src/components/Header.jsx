@@ -1,7 +1,13 @@
 import React from 'react';
 import { Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, UserOutlined, LogoutOutlined, FileTextOutlined } from '@ant-design/icons';
+import {
+    HomeOutlined,
+    UserOutlined,
+    LogoutOutlined,
+    FileTextOutlined,
+    TeamOutlined
+} from '@ant-design/icons';
 import logo from '../assets/logo.png';
 
 const { Header } = Layout;
@@ -10,11 +16,10 @@ const AppHeader = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Función para obtener los datos del usuario
     const getUserData = () => {
         try {
             const userData = JSON.parse(localStorage.getItem('user') || '{}');
-            console.log('Datos del usuario:', userData); // Para debugging
+            console.log('Datos del usuario:', userData);
             return userData;
         } catch (error) {
             console.error('Error al parsear userData:', error);
@@ -28,11 +33,9 @@ const AppHeader = () => {
         navigate('/login');
     };
 
-    // Verificar si el usuario es administrador
     const userData = getUserData();
     const isAdmin = userData.tipo_usuario === 'Administrador';
 
-    // Definimos los items del menú base
     const baseMenuItems = [
         {
             key: '/',
@@ -47,6 +50,12 @@ const AppHeader = () => {
             onClick: () => navigate('/solicitudes')
         },
         {
+            key: '/clientes',
+            icon: <TeamOutlined />,
+            label: 'Clientes',
+            onClick: () => navigate('/clientes')
+        },
+        {
             key: 'logout',
             icon: <LogoutOutlined />,
             label: 'Cerrar Sesión',
@@ -54,7 +63,6 @@ const AppHeader = () => {
         }
     ];
 
-    // Item de menú solo para administradores
     const adminMenuItem = {
         key: '/usuarios',
         icon: <UserOutlined />,
@@ -62,7 +70,6 @@ const AppHeader = () => {
         onClick: () => navigate('/usuarios')
     };
 
-    // Agregamos el item de usuarios solo si es admin
     const menuItems = isAdmin ?
         [...baseMenuItems.slice(0, 1), adminMenuItem, ...baseMenuItems.slice(1)] :
         baseMenuItems;
@@ -101,6 +108,15 @@ const AppHeader = () => {
                     }
                     .custom-menu.ant-menu-dark {
                         background: transparent;
+                    }
+                    .custom-menu.ant-menu-dark .ant-menu-submenu:hover {
+                        background-color: #ff7875 !important;
+                    }
+                    .custom-menu.ant-menu-dark .ant-menu-submenu-selected {
+                        background-color: #ff4d4f !important;
+                    }
+                    .ant-menu-dark .ant-menu-sub {
+                        background: #001529 !important;
                     }
                 `}
             </style>

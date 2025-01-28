@@ -8,6 +8,9 @@ import Usuarios from './modulos/Usuarios';
 import CrearUsuario from './modulos/CrearUsuario';
 import EditarUsuario from './modulos/EditarUsuario';
 import Solicitudes from './modulos/Solicitudes';
+import Clientes from './modulos/Clientes';
+import DireccionesCliente from './modulos/DireccionesCliente';
+import ContactosCliente from './modulos/ContactosCliente';
 
 const App = () => (
   <Router>
@@ -62,6 +65,35 @@ const App = () => (
           <PrivateRoute>
             <Header />
             <Solicitudes />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Rutas protegidas para clientes, direcciones y contactos */}
+      <Route
+        path="/clientes"
+        element={
+          <PrivateRoute>
+            <Header />
+            <Clientes />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/clientes/:codigo/direcciones"
+        element={
+          <PrivateRoute>
+            <Header />
+            <DireccionesCliente />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/clientes/:codigo/contactos"
+        element={
+          <PrivateRoute>
+            <Header />
+            <ContactosCliente />
           </PrivateRoute>
         }
       />
