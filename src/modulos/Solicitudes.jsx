@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Modal, message, DatePicker, Space, AutoComplete } from 'antd';
-import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom'; // Importar hook de navegación
 import axios from 'axios';
 import SolicitudForm from './SolicitudForm';
 
@@ -13,6 +14,7 @@ const Solicitudes = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSolicitud, setSelectedSolicitud] = useState(null);
     const [usuarios, setUsuarios] = useState({});
+    const navigate = useNavigate(); // Hook para redirección
 
     const fetchSolicitudes = async () => {
         setLoading(true);
@@ -142,25 +144,20 @@ const Solicitudes = () => {
         setIsModalOpen(true);
     };
 
-    const handleEdit = (record) => {
-        setSelectedSolicitud(record);
-        setIsModalOpen(true);
-    };
-
     const handleModalClose = () => {
         setIsModalOpen(false);
         fetchSolicitudes();
+    };
+
+    const formatFecha = (fecha) => {
+        const date = new Date(fecha);
+        return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
     };
 
     useEffect(() => {
         fetchSolicitudes();
         fetchEstados();
     }, []);
-
-    const formatFecha = (fecha) => {
-        const date = new Date(fecha);
-        return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-    };
 
     const columns = [
         {
@@ -169,6 +166,11 @@ const Solicitudes = () => {
             key: 'solicitud_numero',
             ...getColumnSearchProps('solicitud_numero'),
             sorter: (a, b) => a.solicitud_numero.localeCompare(b.solicitud_numero),
+            render: (text, record) => (
+                <Button type="link" onClick={() => navigate(`/solicitudes/${record.solicitud_numero}`)}>
+                    {text}
+                </Button>
+            ),
         },
         {
             title: 'Detalles',
@@ -183,40 +185,6 @@ const Solicitudes = () => {
             key: 'fecha_creacion',
             render: (fecha_creacion) => formatFecha(fecha_creacion),
             sorter: (a, b) => new Date(a.fecha_creacion) - new Date(b.fecha_creacion),
-            filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-                <div style={{ padding: 8 }}>
-                    <DatePicker
-                        value={selectedKeys[0]}
-                        onChange={(date) => setSelectedKeys(date ? [date] : [])}
-                        format="DD/MM/YYYY"
-                        style={{ width: 188, marginBottom: 8, display: 'block' }}
-                    />
-                    <Space>
-                        <Button
-                            type="primary"
-                            onClick={() => confirm()}
-                            size="small"
-                            style={{ width: 90 }}
-                        >
-                            Filtrar
-                        </Button>
-                        <Button
-                            onClick={clearFilters}
-                            size="small"
-                            style={{ width: 90 }}
-                        >
-                            Limpiar
-                        </Button>
-                    </Space>
-                </div>
-            ),
-            filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
-            onFilter: (value, record) => {
-                if (!record.fecha_creacion || !value) return false;
-                const recordDate = new Date(record.fecha_creacion);
-                const filterDate = new Date(value);
-                return recordDate.toDateString() === filterDate.toDateString();
-            },
         },
         {
             title: 'Creado Por',
@@ -243,17 +211,6 @@ const Solicitudes = () => {
             })),
             onFilter: (value, record) => record.estado_id === value,
             sorter: (a, b) => getEstadoDescripcion(a.estado_id).localeCompare(getEstadoDescripcion(b.estado_id)),
-        },
-        {
-            title: 'Acciones',
-            key: 'acciones',
-            render: (text, record) => (
-                <Button
-                    type="text"
-                    icon={<EditOutlined style={{ fontSize: '16px', color: '#666' }} />}
-                    onClick={() => handleEdit(record)}
-                />
-            ),
         },
     ];
 

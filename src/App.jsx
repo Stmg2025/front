@@ -8,6 +8,7 @@ import Usuarios from './modulos/Usuarios';
 import CrearUsuario from './modulos/CrearUsuario';
 import EditarUsuario from './modulos/EditarUsuario';
 import Solicitudes from './modulos/Solicitudes';
+import SolicitudDetalle from './modulos/SolicitudDetalle'; // Importamos el nuevo componente
 import Clientes from './modulos/Clientes';
 import DireccionesCliente from './modulos/DireccionesCliente';
 import ContactosCliente from './modulos/ContactosCliente';
@@ -65,6 +66,16 @@ const App = () => (
           <PrivateRoute>
             <Header />
             <Solicitudes />
+          </PrivateRoute>
+        }
+      />
+      {/* Ruta protegida para el detalle de una solicitud */}
+      <Route
+        path="/solicitudes/:solicitudNumero"
+        element={
+          <PrivateRoute>
+            <Header />
+            <SolicitudDetalle />
           </PrivateRoute>
         }
       />
