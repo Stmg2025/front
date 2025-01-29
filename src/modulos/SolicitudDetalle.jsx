@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Card, Button, Descriptions, Spin, Input, Select, message, Space } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DownloadOutlined } from '@ant-design/icons';
@@ -12,81 +12,37 @@ const SolicitudDetalle = () => {
     const [loading, setLoading] = useState(false);
     const [tecnicos, setTecnicos] = useState([]);
     const [estados, setEstados] = useState([]);
-    const [clientes, setClientes] = useState([]);
-    const [direcciones, setDirecciones] = useState([]);
-    const [contactos, setContactos] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
     const [editingField, setEditingField] = useState(null);
     const [editedValue, setEditedValue] = useState('');
+    const contentRef = useRef(null);
 
     const fetchSolicitudDetalle = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const [
-                solicitudResponse,
-                usuariosResponse,
-                estadosResponse,
-                clientesResponse
-            ] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
+            const [solicitudResponse, usuariosResponse, estadosResponse] = await Promise.all([
+                axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                ),
                 axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` },
                 }),
                 axios.get(`${import.meta.env.VITE_BACKEND_URL}/estado_tipos`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
-                axios.get(`${import.meta.env.VITE_BACKEND_URL}/clientes`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` },
                 })
             ]);
 
             setSolicitud(solicitudResponse.data);
+            setUsuarios(usuariosResponse.data);
             setTecnicos(usuariosResponse.data.filter(usuario => usuario.tipo_usuario === 'Tecnico'));
             setEstados(estadosResponse.data);
-            setClientes(clientesResponse.data);
-
-            if (solicitudResponse.data.cliente_codigo) {
-                const [direccionesRes, contactosRes] = await Promise.all([
-                    axios.get(
-                        `${import.meta.env.VITE_BACKEND_URL}/direcciones/cliente/${solicitudResponse.data.cliente_codigo}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    ),
-                    axios.get(
-                        `${import.meta.env.VITE_BACKEND_URL}/contactos/cliente/${solicitudResponse.data.cliente_codigo}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    )
-                ]);
-                setDirecciones(direccionesRes.data);
-                setContactos(contactosRes.data);
-            }
         } catch (error) {
             console.error('Error al cargar datos:', error);
             message.error('Error al cargar los datos de la solicitud.');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleClienteChange = async (clienteCodigo) => {
-        try {
-            const token = localStorage.getItem('token');
-            const [direccionesRes, contactosRes] = await Promise.all([
-                axios.get(
-                    `${import.meta.env.VITE_BACKEND_URL}/direcciones/cliente/${clienteCodigo}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                ),
-                axios.get(
-                    `${import.meta.env.VITE_BACKEND_URL}/contactos/cliente/${clienteCodigo}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                )
-            ]);
-            setDirecciones(direccionesRes.data);
-            setContactos(contactosRes.data);
-            setEditedValue(clienteCodigo);
-        } catch (error) {
-            message.error('Error al cargar datos del cliente');
         }
     };
 
@@ -100,26 +56,12 @@ const SolicitudDetalle = () => {
         return tecnico ? `${tecnico.nombre} ${tecnico.apellido}` : 'No asignado';
     };
 
-    const getClienteNombre = (codigo) => {
-        const cliente = clientes.find(c => c.codigo === codigo);
-        return cliente ? cliente.nombre : 'No asignado';
+    const getCreadorNombre = (correo_electronico) => {
+        const usuario = usuarios.find(u => u.correo_electronico === correo_electronico);
+        return usuario ? `${usuario.nombre} ${usuario.apellido}` : correo_electronico;
     };
 
-    const getDireccionDescripcion = (id) => {
-        const direccion = direcciones.find(d => d.id === id);
-        return direccion ?
-            `${direccion.direccion} ${direccion.numero || ''}, ${direccion.comuna}` :
-            'No asignada';
-    };
-
-    const getContactoNombre = (id) => {
-        const contacto = contactos.find(c => c.id === id);
-        return contacto ?
-            `${contacto.nombre} ${contacto.apellido || ''} - ${contacto.cargo || 'Sin cargo'}` :
-            'No asignado';
-    };
     const formatFechaHora = (fecha) => {
-        if (!fecha) return 'No especificada';
         const date = new Date(fecha);
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     };
@@ -127,27 +69,12 @@ const SolicitudDetalle = () => {
     const handleEdit = (field, currentValue) => {
         setEditingField(field);
         setEditedValue(currentValue);
-
-        // Si estamos editando el cliente, limpiar direcciones y contactos
-        if (field === 'cliente_codigo') {
-            setDirecciones([]);
-            setContactos([]);
-        }
     };
 
     const handleSave = async (field) => {
         try {
             const token = localStorage.getItem('token');
-
-            // Si estamos cambiando el cliente, limpiar dirección y contacto
-            let dataToUpdate = { [field]: editedValue };
-            if (field === 'cliente_codigo') {
-                dataToUpdate = {
-                    ...dataToUpdate,
-                    direccion_id: null,
-                    contacto_id: null
-                };
-            }
+            const dataToUpdate = { [field]: editedValue };
 
             await axios.put(
                 `${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`,
@@ -155,7 +82,7 @@ const SolicitudDetalle = () => {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            setSolicitud(prev => ({ ...prev, ...dataToUpdate }));
+            setSolicitud(prev => ({ ...prev, [field]: editedValue }));
             setEditingField(null);
             message.success('Campo actualizado con éxito');
             await fetchSolicitudDetalle();
@@ -177,9 +104,7 @@ const SolicitudDetalle = () => {
             getTecnicoNombre,
             getEstadoDescripcion,
             formatFechaHora,
-            getClienteNombre,
-            getDireccionDescripcion,
-            getContactoNombre
+            getCreadorNombre
         });
     };
 
@@ -202,6 +127,7 @@ const SolicitudDetalle = () => {
                         </Button>
                     </Space>
                     <Card
+                        ref={contentRef}
                         title={`Detalle de Solicitud ${solicitud.solicitud_numero}`}
                         style={{ margin: '20px' }}
                     >
@@ -209,102 +135,6 @@ const SolicitudDetalle = () => {
                             <Descriptions.Item label="Número de Solicitud">
                                 {solicitud.solicitud_numero}
                             </Descriptions.Item>
-
-                            <Descriptions.Item label="Cliente">
-                                {editingField === 'cliente_codigo' ? (
-                                    <div>
-                                        <Select
-                                            style={{ width: '100%' }}
-                                            value={editedValue}
-                                            onChange={(value) => {
-                                                handleClienteChange(value);
-                                            }}
-                                            showSearch
-                                            optionFilterProp="children"
-                                        >
-                                            {clientes.map(cliente => (
-                                                <Select.Option key={cliente.codigo} value={cliente.codigo}>
-                                                    {cliente.nombre} - {cliente.rut}
-                                                </Select.Option>
-                                            ))}
-                                        </Select>
-                                        <Button type="link" onClick={() => handleSave('cliente_codigo')}>Guardar</Button>
-                                        <Button type="link" onClick={handleCancel}>Cancelar</Button>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        {getClienteNombre(solicitud.cliente_codigo)}{' '}
-                                        <Button type="link" onClick={() => handleEdit('cliente_codigo', solicitud.cliente_codigo)}>
-                                            Editar
-                                        </Button>
-                                    </div>
-                                )}
-                            </Descriptions.Item>
-
-                            <Descriptions.Item label="Dirección">
-                                {editingField === 'direccion_id' ? (
-                                    <div>
-                                        <Select
-                                            style={{ width: '100%' }}
-                                            value={editedValue}
-                                            onChange={(value) => setEditedValue(value)}
-                                            disabled={!solicitud.cliente_codigo}
-                                        >
-                                            {direcciones.map(direccion => (
-                                                <Select.Option key={direccion.id} value={direccion.id}>
-                                                    {`${direccion.direccion} ${direccion.numero || ''}, ${direccion.comuna}`}
-                                                </Select.Option>
-                                            ))}
-                                        </Select>
-                                        <Button type="link" onClick={() => handleSave('direccion_id')}>Guardar</Button>
-                                        <Button type="link" onClick={handleCancel}>Cancelar</Button>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        {getDireccionDescripcion(solicitud.direccion_id)}{' '}
-                                        <Button
-                                            type="link"
-                                            onClick={() => handleEdit('direccion_id', solicitud.direccion_id)}
-                                            disabled={!solicitud.cliente_codigo}
-                                        >
-                                            Editar
-                                        </Button>
-                                    </div>
-                                )}
-                            </Descriptions.Item>
-
-                            <Descriptions.Item label="Contacto">
-                                {editingField === 'contacto_id' ? (
-                                    <div>
-                                        <Select
-                                            style={{ width: '100%' }}
-                                            value={editedValue}
-                                            onChange={(value) => setEditedValue(value)}
-                                            disabled={!solicitud.cliente_codigo}
-                                        >
-                                            {contactos.map(contacto => (
-                                                <Select.Option key={contacto.id} value={contacto.id}>
-                                                    {`${contacto.nombre} ${contacto.apellido || ''} - ${contacto.cargo || 'Sin cargo'}`}
-                                                </Select.Option>
-                                            ))}
-                                        </Select>
-                                        <Button type="link" onClick={() => handleSave('contacto_id')}>Guardar</Button>
-                                        <Button type="link" onClick={handleCancel}>Cancelar</Button>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        {getContactoNombre(solicitud.contacto_id)}{' '}
-                                        <Button
-                                            type="link"
-                                            onClick={() => handleEdit('contacto_id', solicitud.contacto_id)}
-                                            disabled={!solicitud.cliente_codigo}
-                                        >
-                                            Editar
-                                        </Button>
-                                    </div>
-                                )}
-                            </Descriptions.Item>
-
                             <Descriptions.Item label="Detalles">
                                 {editingField === 'detalles' ? (
                                     <div>
@@ -325,15 +155,12 @@ const SolicitudDetalle = () => {
                                     </div>
                                 )}
                             </Descriptions.Item>
-
                             <Descriptions.Item label="Fecha y Hora de Creación">
                                 {formatFechaHora(solicitud.fecha_creacion)}
                             </Descriptions.Item>
-
                             <Descriptions.Item label="Creado Por">
-                                {solicitud.creado_por || 'Desconocido'}
+                                {getCreadorNombre(solicitud.creado_por)}
                             </Descriptions.Item>
-
                             <Descriptions.Item label="Técnico Asignado">
                                 {editingField === 'tecnico' ? (
                                     <div>
@@ -363,7 +190,6 @@ const SolicitudDetalle = () => {
                                     </div>
                                 )}
                             </Descriptions.Item>
-
                             <Descriptions.Item label="Estado">
                                 {editingField === 'estado_id' ? (
                                     <div>
