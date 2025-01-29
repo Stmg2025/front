@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Input, Modal, message, DatePicker, Space, AutoComplete } from 'antd';
+import { Table, Button, Input, Modal, message, Space, AutoComplete } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -14,35 +14,79 @@ const Solicitudes = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSolicitud, setSelectedSolicitud] = useState(null);
     const [usuarios, setUsuarios] = useState({});
+    const [clientes, setClientes] = useState({});
+    const [direcciones, setDirecciones] = useState({});
+    const [contactos, setContactos] = useState({});
     const navigate = useNavigate();
 
     const fetchSolicitudes = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const [solicitudesResponse, usuariosResponse] = await Promise.all([
+
+            const responses = await Promise.allSettled([
                 axios.get(`${import.meta.env.VITE_BACKEND_URL}/solicitudes`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${token}` }
                 }),
                 axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/clientes`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/direcciones/all`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/contactos/all`, {
+                    headers: { Authorization: `Bearer ${token}` }
                 })
             ]);
 
-            setSolicitudes(solicitudesResponse.data);
-
-            // Crear un mapa de usuarios que incluya tanto el nombre completo como el correo
-            const usuariosMap = {};
-            usuariosResponse.data.forEach(usuario => {
-                usuariosMap[usuario.correo_electronico] = {
-                    nombreCompleto: `${usuario.nombre} ${usuario.apellido}`,
-                    correo: usuario.correo_electronico
-                };
-            });
-            setUsuarios(usuariosMap);
+            // Procesar respuestas
+            for (let i = 0; i < responses.length; i++) {
+                const response = responses[i];
+                if (response.status === 'fulfilled') {
+                    switch (i) {
+                        case 0:
+                            setSolicitudes(response.value.data);
+                            break;
+                        case 1:
+                            const usuariosMap = {};
+                            response.value.data.forEach(usuario => {
+                                usuariosMap[usuario.correo_electronico] = {
+                                    nombreCompleto: `${usuario.nombre} ${usuario.apellido}`,
+                                    correo: usuario.correo_electronico
+                                };
+                            });
+                            setUsuarios(usuariosMap);
+                            break;
+                        case 2:
+                            const clientesMap = {};
+                            response.value.data.forEach(cliente => {
+                                clientesMap[cliente.codigo] = cliente;
+                            });
+                            setClientes(clientesMap);
+                            break;
+                        case 3:
+                            const direccionesMap = {};
+                            response.value.data.forEach(direccion => {
+                                direccionesMap[direccion.id] = direccion;
+                            });
+                            setDirecciones(direccionesMap);
+                            break;
+                        case 4:
+                            const contactosMap = {};
+                            response.value.data.forEach(contacto => {
+                                contactosMap[contacto.id] = contacto;
+                            });
+                            setContactos(contactosMap);
+                            break;
+                    }
+                }
+            }
         } catch (error) {
             console.error('Error al cargar solicitudes:', error);
-            message.error('Error al cargar solicitudes');
+            message.error('Error al cargar datos. Algunos datos podrían no estar disponibles.');
         } finally {
             setLoading(false);
         }
@@ -62,7 +106,7 @@ const Solicitudes = () => {
     };
 
     const getEstadoDescripcion = (estado_id) => {
-        const estado = estados.find((e) => e.id === estado_id);
+        const estado = estados.find(e => e.id === estado_id);
         return estado ? estado.descripcion : 'Desconocido';
     };
 
@@ -74,6 +118,9 @@ const Solicitudes = () => {
                 values.add(usuario ? usuario.nombreCompleto : item[dataIndex]);
             } else if (dataIndex === 'estado_id') {
                 values.add(getEstadoDescripcion(item[dataIndex]));
+            } else if (dataIndex === 'cliente_codigo') {
+                const cliente = clientes[item[dataIndex]];
+                values.add(cliente ? cliente.nombre : item[dataIndex]);
             } else {
                 values.add(item[dataIndex]);
             }
@@ -135,6 +182,10 @@ const Solicitudes = () => {
                 return displayValue.toString().toLowerCase().includes(value.toLowerCase());
             } else if (dataIndex === 'estado_id') {
                 return getEstadoDescripcion(record[dataIndex]).toLowerCase().includes(value.toLowerCase());
+            } else if (dataIndex === 'cliente_codigo') {
+                const cliente = clientes[record[dataIndex]];
+                const displayValue = cliente ? cliente.nombre : record[dataIndex];
+                return displayValue.toString().toLowerCase().includes(value.toLowerCase());
             }
             return record[dataIndex]
                 ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
@@ -176,11 +227,45 @@ const Solicitudes = () => {
             ),
         },
         {
+            title: 'Cliente',
+            dataIndex: 'cliente_codigo',
+            key: 'cliente_codigo',
+            ...getColumnSearchProps('cliente_codigo'),
+            render: (cliente_codigo) => clientes[cliente_codigo]?.nombre || 'No asignado',
+            sorter: (a, b) => {
+                const nombreA = clientes[a.cliente_codigo]?.nombre || '';
+                const nombreB = clientes[b.cliente_codigo]?.nombre || '';
+                return nombreA.localeCompare(nombreB);
+            },
+        },
+        {
+            title: 'Dirección',
+            dataIndex: 'direccion_id',
+            key: 'direccion_id',
+            render: (direccion_id) => {
+                const direccion = direcciones[direccion_id];
+                return direccion ?
+                    `${direccion.direccion} ${direccion.numero || ''}, ${direccion.comuna}` :
+                    'No asignada';
+            },
+        },
+        {
+            title: 'Contacto',
+            dataIndex: 'contacto_id',
+            key: 'contacto_id',
+            render: (contacto_id) => {
+                const contacto = contactos[contacto_id];
+                return contacto ?
+                    `${contacto.nombre} ${contacto.apellido || ''}` :
+                    'No asignado';
+            },
+        },
+        {
             title: 'Detalles',
             dataIndex: 'detalles',
             key: 'detalles',
             ...getColumnSearchProps('detalles'),
-            sorter: (a, b) => a.detalles.localeCompare(b.detalles),
+            sorter: (a, b) => (a.detalles || '').localeCompare(b.detalles || ''),
         },
         {
             title: 'Fecha Creación',
@@ -257,6 +342,7 @@ const Solicitudes = () => {
                 open={isModalOpen}
                 footer={null}
                 onCancel={() => setIsModalOpen(false)}
+                width={800}
             >
                 <SolicitudForm
                     solicitud={selectedSolicitud}
