@@ -3,8 +3,7 @@ import { Card, Button, Descriptions, Spin, Input, Select, message, Space } from 
 import { useNavigate, useParams } from 'react-router-dom';
 import { DownloadOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { generateSolicitudPDF } from './PdfGenerator';
 
 const SolicitudDetalle = () => {
     const { solicitudNumero } = useParams();
@@ -13,6 +12,7 @@ const SolicitudDetalle = () => {
     const [loading, setLoading] = useState(false);
     const [tecnicos, setTecnicos] = useState([]);
     const [estados, setEstados] = useState([]);
+    const [usuarios, setUsuarios] = useState([]);
     const [editingField, setEditingField] = useState(null);
     const [editedValue, setEditedValue] = useState('');
     const contentRef = useRef(null);
@@ -35,6 +35,7 @@ const SolicitudDetalle = () => {
             ]);
 
             setSolicitud(solicitudResponse.data);
+            setUsuarios(usuariosResponse.data);
             setTecnicos(usuariosResponse.data.filter(usuario => usuario.tipo_usuario === 'Tecnico'));
             setEstados(estadosResponse.data);
         } catch (error) {
@@ -53,6 +54,11 @@ const SolicitudDetalle = () => {
     const getTecnicoNombre = (correo_electronico) => {
         const tecnico = tecnicos.find(t => t.correo_electronico === correo_electronico);
         return tecnico ? `${tecnico.nombre} ${tecnico.apellido}` : 'No asignado';
+    };
+
+    const getCreadorNombre = (correo_electronico) => {
+        const usuario = usuarios.find(u => u.correo_electronico === correo_electronico);
+        return usuario ? `${usuario.nombre} ${usuario.apellido}` : correo_electronico;
     };
 
     const formatFechaHora = (fecha) => {
@@ -91,72 +97,15 @@ const SolicitudDetalle = () => {
         setEditedValue('');
     };
 
-    const generatePDF = async () => {
-        try {
-            message.loading({ content: 'Generando PDF...', key: 'pdfGeneration' });
-            const content = contentRef.current;
-
-            // Ocultar temporalmente los botones de edición
-            const editButtons = content.querySelectorAll('button');
-            editButtons.forEach(button => {
-                button.style.display = 'none';
-            });
-
-            // Configuración mejorada de html2canvas
-            const canvas = await html2canvas(content, {
-                scale: 2,
-                logging: false,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                windowWidth: content.scrollWidth,
-                windowHeight: content.scrollHeight
-            });
-
-            // Restaurar los botones
-            editButtons.forEach(button => {
-                button.style.display = 'inline-flex';
-            });
-
-            const imgWidth = 190; // A4 width in mm (210mm - margins)
-            const pageHeight = 297; // A4 height in mm
-            const imgHeight = canvas.height * imgWidth / canvas.width;
-
-            const pdf = new jsPDF('p', 'mm', 'a4');
-
-            // Agregar encabezado
-            pdf.setFontSize(16);
-            pdf.text('Detalle de Solicitud', 105, 15, { align: 'center' });
-
-            // Agregar la imagen del contenido
-            const imgData = canvas.toDataURL('image/png');
-
-            // Si el contenido es más largo que una página, dividirlo en múltiples páginas
-            let heightLeft = imgHeight;
-            let position = 25; // Empezar después del encabezado
-            let pageData = imgData;
-
-            pdf.addImage(pageData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            while (heightLeft >= 0) {
-                position = 0;
-                pdf.addPage();
-                pdf.addImage(pageData, 'PNG', 10, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
-            // Agregar pie de página en la última página
-            pdf.setFontSize(10);
-            const fecha = new Date().toLocaleDateString();
-            const hora = new Date().toLocaleTimeString();
-            pdf.text(`Generado el: ${fecha} ${hora}`, 10, pdf.internal.pageSize.height - 10);
-
-            pdf.save(`Solicitud-${solicitudNumero}.pdf`);
-            message.success({ content: 'PDF generado con éxito', key: 'pdfGeneration' });
-        } catch (error) {
-            console.error('Error al generar PDF:', error);
-            message.error({ content: 'Error al generar el PDF', key: 'pdfGeneration' });
-        }
+    const handleGeneratePDF = async () => {
+        await generateSolicitudPDF({
+            solicitudNumero,
+            solicitud,
+            getTecnicoNombre,
+            getEstadoDescripcion,
+            formatFechaHora,
+            getCreadorNombre
+        });
     };
 
     useEffect(() => {
@@ -172,7 +121,7 @@ const SolicitudDetalle = () => {
                         <Button
                             type="primary"
                             icon={<DownloadOutlined />}
-                            onClick={generatePDF}
+                            onClick={handleGeneratePDF}
                         >
                             Exportar PDF
                         </Button>
@@ -210,7 +159,7 @@ const SolicitudDetalle = () => {
                                 {formatFechaHora(solicitud.fecha_creacion)}
                             </Descriptions.Item>
                             <Descriptions.Item label="Creado Por">
-                                {solicitud.creado_por || 'Desconocido'}
+                                {getCreadorNombre(solicitud.creado_por)}
                             </Descriptions.Item>
                             <Descriptions.Item label="Técnico Asignado">
                                 {editingField === 'tecnico' ? (
