@@ -17,23 +17,24 @@ const SolicitudDetalle = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const solicitudResponse = await axios.get(
-                `${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const [solicitudResponse, usuariosResponse, estadosResponse] = await Promise.all([
+                axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                ),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/estado_tipos`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+            ]);
 
             setSolicitud(solicitudResponse.data);
-
-            const usuariosResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
             setTecnicos(usuariosResponse.data.filter(usuario => usuario.tipo_usuario === 'Tecnico'));
-
-            const estadosResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/estado_tipos`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
             setEstados(estadosResponse.data);
         } catch (error) {
+            console.error('Error al cargar datos:', error);
             message.error('Error al cargar los datos de la solicitud.');
         } finally {
             setLoading(false);
@@ -43,6 +44,11 @@ const SolicitudDetalle = () => {
     const getEstadoDescripcion = (estado_id) => {
         const estado = estados.find(e => e.id === estado_id);
         return estado ? estado.descripcion : 'Desconocido';
+    };
+
+    const getTecnicoNombre = (correo_electronico) => {
+        const tecnico = tecnicos.find(t => t.correo_electronico === correo_electronico);
+        return tecnico ? `${tecnico.nombre} ${tecnico.apellido}` : 'No asignado';
     };
 
     const formatFechaHora = (fecha) => {
@@ -58,16 +64,20 @@ const SolicitudDetalle = () => {
     const handleSave = async (field) => {
         try {
             const token = localStorage.getItem('token');
+            const dataToUpdate = { [field]: editedValue };
+
             await axios.put(
                 `${import.meta.env.VITE_BACKEND_URL}/solicitudes/${solicitudNumero}`,
-                { [field]: editedValue },
+                dataToUpdate,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
             setSolicitud(prev => ({ ...prev, [field]: editedValue }));
             setEditingField(null);
             message.success('Campo actualizado con éxito');
+            await fetchSolicitudDetalle();
         } catch (error) {
+            console.error('Error al actualizar:', error);
             message.error('Error al actualizar el campo.');
         }
     };
@@ -128,7 +138,10 @@ const SolicitudDetalle = () => {
                                         onChange={(value) => setEditedValue(value)}
                                     >
                                         {tecnicos.map(tecnico => (
-                                            <Select.Option key={tecnico.correo_electronico} value={tecnico.correo_electronico}>
+                                            <Select.Option
+                                                key={tecnico.correo_electronico}
+                                                value={tecnico.correo_electronico}
+                                            >
                                                 {`${tecnico.nombre} ${tecnico.apellido}`}
                                             </Select.Option>
                                         ))}
@@ -138,7 +151,7 @@ const SolicitudDetalle = () => {
                                 </div>
                             ) : (
                                 <div>
-                                    {tecnicos.find(tec => tec.correo_electronico === solicitud.tecnico)?.nombre || 'No asignado'}{' '}
+                                    {getTecnicoNombre(solicitud.tecnico)}{' '}
                                     <Button type="link" onClick={() => handleEdit('tecnico', solicitud.tecnico)}>
                                         Editar
                                     </Button>

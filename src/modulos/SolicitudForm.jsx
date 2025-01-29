@@ -54,6 +54,7 @@ const SolicitudForm = ({ solicitud, onClose, estados }) => {
             }
             onClose();
         } catch (error) {
+            console.error('Error al guardar:', error);
             message.error('Error al guardar la solicitud');
         } finally {
             setLoading(false);
@@ -69,10 +70,16 @@ const SolicitudForm = ({ solicitud, onClose, estados }) => {
             >
                 <Input.TextArea rows={4} />
             </Form.Item>
-            <Form.Item label="Técnico" name="tecnico">
+            <Form.Item
+                label="Técnico"
+                name="tecnico"
+            >
                 <Select placeholder="Seleccione un técnico (opcional)">
                     {tecnicos.map((tecnico) => (
-                        <Select.Option key={tecnico.id} value={tecnico.nombre + ' ' + tecnico.apellido}>
+                        <Select.Option
+                            key={tecnico.correo_electronico}
+                            value={tecnico.correo_electronico}
+                        >
                             {tecnico.nombre} {tecnico.apellido}
                         </Select.Option>
                     ))}

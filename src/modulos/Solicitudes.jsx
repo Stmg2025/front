@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Modal, message, DatePicker, Space, AutoComplete } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom'; // Importar hook de navegación
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SolicitudForm from './SolicitudForm';
 
@@ -14,27 +14,34 @@ const Solicitudes = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSolicitud, setSelectedSolicitud] = useState(null);
     const [usuarios, setUsuarios] = useState({});
-    const navigate = useNavigate(); // Hook para redirección
+    const navigate = useNavigate();
 
     const fetchSolicitudes = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/solicitudes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setSolicitudes(response.data);
+            const [solicitudesResponse, usuariosResponse] = await Promise.all([
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/solicitudes`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+                axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+            ]);
 
-            const usuariosResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/usuarios`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            setSolicitudes(solicitudesResponse.data);
 
+            // Crear un mapa de usuarios que incluya tanto el nombre completo como el correo
             const usuariosMap = {};
             usuariosResponse.data.forEach(usuario => {
-                usuariosMap[usuario.correo_electronico] = `${usuario.nombre} ${usuario.apellido}`;
+                usuariosMap[usuario.correo_electronico] = {
+                    nombreCompleto: `${usuario.nombre} ${usuario.apellido}`,
+                    correo: usuario.correo_electronico
+                };
             });
             setUsuarios(usuariosMap);
         } catch (error) {
+            console.error('Error al cargar solicitudes:', error);
             message.error('Error al cargar solicitudes');
         } finally {
             setLoading(false);
@@ -49,6 +56,7 @@ const Solicitudes = () => {
             });
             setEstados(response.data);
         } catch (error) {
+            console.error('Error al cargar estados:', error);
             message.error('Error al cargar estados');
         }
     };
@@ -61,8 +69,9 @@ const Solicitudes = () => {
     const getUniqueValues = (dataIndex) => {
         const values = new Set();
         solicitudes.forEach(item => {
-            if (dataIndex === 'creado_por') {
-                values.add(usuarios[item[dataIndex]] || item[dataIndex]);
+            if (dataIndex === 'creado_por' || dataIndex === 'tecnico') {
+                const usuario = usuarios[item[dataIndex]];
+                values.add(usuario ? usuario.nombreCompleto : item[dataIndex]);
             } else if (dataIndex === 'estado_id') {
                 values.add(getEstadoDescripcion(item[dataIndex]));
             } else {
@@ -120,22 +129,16 @@ const Solicitudes = () => {
         ),
         filterIcon: filtered => <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />,
         onFilter: (value, record) => {
-            if (dataIndex === 'creado_por') {
-                return (usuarios[record[dataIndex]] || '').toString().toLowerCase().includes(value.toLowerCase());
+            if (dataIndex === 'creado_por' || dataIndex === 'tecnico') {
+                const usuario = usuarios[record[dataIndex]];
+                const displayValue = usuario ? usuario.nombreCompleto : record[dataIndex];
+                return displayValue.toString().toLowerCase().includes(value.toLowerCase());
             } else if (dataIndex === 'estado_id') {
                 return getEstadoDescripcion(record[dataIndex]).toLowerCase().includes(value.toLowerCase());
             }
             return record[dataIndex]
                 ? record[dataIndex].toString().toLowerCase().includes(value.toLowerCase())
                 : '';
-        },
-        render: text => {
-            if (dataIndex === 'creado_por') {
-                return usuarios[text] || text;
-            } else if (dataIndex === 'estado_id') {
-                return getEstadoDescripcion(text);
-            }
-            return text;
         },
     });
 
@@ -191,14 +194,24 @@ const Solicitudes = () => {
             dataIndex: 'creado_por',
             key: 'creado_por',
             ...getColumnSearchProps('creado_por'),
-            sorter: (a, b) => (usuarios[a.creado_por] || '').localeCompare(usuarios[b.creado_por] || ''),
+            render: (creado_por) => usuarios[creado_por]?.nombreCompleto || creado_por,
+            sorter: (a, b) => {
+                const nombreA = usuarios[a.creado_por]?.nombreCompleto || a.creado_por;
+                const nombreB = usuarios[b.creado_por]?.nombreCompleto || b.creado_por;
+                return nombreA.localeCompare(nombreB);
+            },
         },
         {
             title: 'Técnico',
             dataIndex: 'tecnico',
             key: 'tecnico',
             ...getColumnSearchProps('tecnico'),
-            sorter: (a, b) => (a.tecnico || '').localeCompare(b.tecnico || ''),
+            render: (tecnico) => usuarios[tecnico]?.nombreCompleto || 'No asignado',
+            sorter: (a, b) => {
+                const nombreA = usuarios[a.tecnico]?.nombreCompleto || 'No asignado';
+                const nombreB = usuarios[b.tecnico]?.nombreCompleto || 'No asignado';
+                return nombreA.localeCompare(nombreB);
+            },
         },
         {
             title: 'Estado',
